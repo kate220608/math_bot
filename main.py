@@ -12,7 +12,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-OPERATORS = ['=', '-', '%', '+', '/', '^', '*', '√']
 
 start_reply_keyboard = [['/help', '/ask_sol']]
 start_markup = ReplyKeyboardMarkup(start_reply_keyboard, one_time_keyboard=True)
@@ -54,28 +53,7 @@ async def messages(update, context):
         await update.message.reply_text("Введите уравнение")
     else:
         if update.message.reply_to_message:
-            if update.message.reply_to_message.text == "Введите уравнение":
-                if any(map(str.isdigit, text)) and any(map(lambda x: x.lower() == 'x', text)):
-                    if '//' in text:
-                        res = get_solution(text.replace('//', '/'))
-                    elif '**' in text:
-                        res = get_solution(text.replace('**', '^'))
-                    else:
-                        res = get_solution(text)
-                    if res is not None:
-                        await update.message.reply_text(res)
-                    else:
-                        await update.message.reply_text("Решения нет.")
-                else:
-                    await update.message.reply_text("Это не уравнение")
-            elif update.message.reply_to_message.text == "Введите пример":
-                if any(map(str.isdigit, text)) and any(map(lambda x: x in OPERATORS, text)):
-                    if '√' in text:
-                        await update.message.reply_text(float(text.replace('√', '')) ** 0.5)
-                    else:
-                        await update.message.reply_text(eval(text))
-                else:
-                    await update.message.reply_text('Это не пример')
+            await update.message.reply_text(get_solution(text, update.message.reply_to_message.text))
         else:
             await update.message.reply_photo(photo=open('img/how_to_send.jpg', 'rb'))
 

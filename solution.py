@@ -1,7 +1,35 @@
 import requests
 
 
-def get_solution(question):
+OPERATORS = ['=', '-', '%', '+', '/', '^', '*', '√']
+
+
+def get_solution(text, reply_message):
+    if reply_message == "Введите уравнение":
+        if any(map(str.isdigit, text)) and any(map(lambda x: x.lower() == 'x', text)):
+            if '//' in text:
+                res = get_solution_wolfram(text.replace('//', '/'))
+            elif '**' in text:
+                res = get_solution_wolfram(text.replace('**', '^'))
+            else:
+                res = get_solution_wolfram(text)
+            if res is not None:
+                return res
+            else:
+               return "Решения нет."
+        else:
+           return "Это не уравнение"
+    elif reply_message == "Введите пример":
+        if any(map(str.isdigit, text)) and any(map(lambda x: x in OPERATORS, text)):
+            if '√' in text:
+                return float(text.replace('√', '')) ** 0.5
+            else:
+                return eval(text)
+        else:
+            return "Это не пример"
+
+
+def get_solution_wolfram(question):
     app_id = 'PKP57J-LKJRVT8HHV'
     if '+' in question:
         question = question.replace('+', '%2B')
