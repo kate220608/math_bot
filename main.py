@@ -3,8 +3,7 @@ from telegram.ext import Application, MessageHandler, filters, CommandHandler
 from telegram import ReplyKeyboardMarkup
 from solution import get_solution
 from data import db_session
-from data.users import User
-from work_with_db import add_user, delete_user
+from work_with_db import add_user, delete_user, user_not_first_time, last_example_from_user
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
@@ -18,6 +17,9 @@ start_markup = ReplyKeyboardMarkup(start_reply_keyboard, one_time_keyboard=True)
 
 sol_reply_keyboard = [['уравнение', 'пример']]
 sol_markup = ReplyKeyboardMarkup(sol_reply_keyboard, one_time_keyboard=True)
+
+yes_or_no_keyboard = [['да', 'нет']]
+yes_or_no_markup = ReplyKeyboardMarkup(yes_or_no_keyboard, one_time_keyboard=True)
 
 
 async def start(update, context):
@@ -42,7 +44,11 @@ async def help(update, context):
 
 
 async def ask_sol(update, context):
-    await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
+    last_example = last_example_from_user(update.effective_user.id)
+    if last_example:
+        await update.message.reply_text(f"В прошлый раз у вас вызвали затруднения {last_example} примеры.\nПотренируемся?", reply_markup=yes_or_no_markup)
+    else:
+        await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
 
 
 async def messages(update, context):
@@ -51,9 +57,14 @@ async def messages(update, context):
         await update.message.reply_text("Введите пример")
     elif text == "уравнение":
         await update.message.reply_text("Введите уравнение")
+    elif text == 'да':
+        pass
+    elif text == 'нет':
+        await update.message.reply_text('Хорошо!\nВыберите вид', reply_markup=sol_markup)
     else:
         if update.message.reply_to_message:
-            await update.message.reply_text(get_solution(text, update.message.reply_to_message.text))
+            await update.message.reply_text(get_solution(text, update.message.reply_to_message.text,
+                                                         update.effective_user.id))
         else:
             await update.message.reply_photo(photo=open('img/how_to_send.jpg', 'rb'))
 
