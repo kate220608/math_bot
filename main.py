@@ -3,7 +3,8 @@ from telegram.ext import Application, MessageHandler, filters, CommandHandler
 from telegram import ReplyKeyboardMarkup
 from solution import get_solution
 from data import db_session
-from work_with_db import add_user, delete_user, user_not_first_time, last_example_from_user
+from work_with_db import add_user, delete_user, last_example_from_user, last_equation_from_user
+
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
@@ -45,8 +46,13 @@ async def help(update, context):
 
 async def ask_sol(update, context):
     last_example = last_example_from_user(update.effective_user.id)
+    last_equation = last_equation_from_user(update.effective_user.id)
     if last_example:
-        await update.message.reply_text(f"В прошлый раз у вас вызвали затруднения {last_example} примеры.\nПотренируемся?", reply_markup=yes_or_no_markup)
+        await update.message.reply_html(f"В прошлый раз у вас вызвали затруднения <b>{last_example}</b> примеры.\nПотренируемся?", reply_markup=yes_or_no_markup)
+    elif last_equation:
+        await update.message.reply_html(
+            f"В прошлый раз у вас вызвали затруднения <b>{last_equation}</b> уравнения.\nПотренируемся?",
+            reply_markup=yes_or_no_markup)
     else:
         await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
 

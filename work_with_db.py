@@ -1,6 +1,7 @@
 from data import db_session
 from data.users import User
 from data.example import Example
+from data.equation import Equation
 
 
 def add_user(user_id, name):
@@ -12,6 +13,7 @@ def add_user(user_id, name):
         user.id = user_id
         user.name = name
         user.last_example_id = 0
+        user.last_equation_id = 0
         db_sess.add(user)
         db_sess.commit()
         return "Я бот, помогающий решать математические задачи."
@@ -42,10 +44,30 @@ def last_example_to_user(user_id, type_example):
     db_sess.commit()
 
 
+def last_equation_to_user(user_id, type_equation):
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.id == user_id).first()
+    equation_find = db_sess.query(Equation).filter(Equation.type == type_equation).first()
+    if equation_find:
+        user.last_equation_id = equation_find.id
+    else:
+        user.last_equation_id = 0
+    db_sess.commit()
+
+
 def last_example_from_user(user_id):
     db_sess = db_session.create_session()
     user = db_sess.query(User).filter(User.id == user_id).first()
     if user.last_example_id != 0:
         return db_sess.query(Example).filter(Example.id == user.last_example_id).first().type
+    else:
+        return False
+
+
+def last_equation_from_user(user_id):
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.id == user_id).first()
+    if user.last_equation_id != 0:
+        return db_sess.query(Equation).filter(Equation.id == user.last_equation_id).first().type
     else:
         return False
