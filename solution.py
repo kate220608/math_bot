@@ -66,10 +66,25 @@ def what_type_example(text):
         return 'однозначные'
     elif all(map(lambda x: len(x) == 2, filter(str.isdigit, text.split()))):
         return 'двузначные'
+    elif all(map(lambda x: len(x) == 3, filter(str.isdigit, text.split()))):
+        return 'трехзначные'
+    elif all(map(lambda x: len(x) > 3, filter(str.isdigit, text.split()))):
+        return 'многозначные'
 
 
 def what_type_equation(text):
-    if "**" in text:
+    if "**2" in text:
         return 'квадратные'
+    elif "**" in text:
+        return 'биквадратные'
+    elif "√" in text:
+        return 'иррациональные'
+    elif "|" in text:
+        return 'модульные'
+    elif "/" in text:
+        return 'дробные'
+    else:
+        return 'линейные'
+
 
 
