@@ -4,7 +4,7 @@ from telegram import ReplyKeyboardMarkup
 from solution import get_solution
 from data import db_session
 from work_with_db import add_user, delete_user, last_example_from_user, last_equation_from_user
-
+from work_with_files import open_equation, open_example
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
@@ -22,6 +22,8 @@ sol_markup = ReplyKeyboardMarkup(sol_reply_keyboard, one_time_keyboard=True)
 yes_or_no_keyboard = [['да', 'нет']]
 yes_or_no_markup = ReplyKeyboardMarkup(yes_or_no_keyboard, one_time_keyboard=True)
 
+
+EXAMPLE = True
 
 async def start(update, context):
     user = update.effective_user
@@ -45,33 +47,52 @@ async def help(update, context):
 
 
 async def ask_sol(update, context):
-    last_example = last_example_from_user(update.effective_user.id)
-    last_equation = last_equation_from_user(update.effective_user.id)
-    if last_example:
-        await update.message.reply_html(f"В прошлый раз у вас вызвали затруднения <b>{last_example}</b> примеры.\nПотренируемся?", reply_markup=yes_or_no_markup)
-    elif last_equation:
-        await update.message.reply_html(
-            f"В прошлый раз у вас вызвали затруднения <b>{last_equation}</b> уравнения.\nПотренируемся?",
-            reply_markup=yes_or_no_markup)
-    else:
-        await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
+    await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
 
 
 async def messages(update, context):
+    global EXAMPLE
     text = update.message.text
+
     if text == "пример":
-        await update.message.reply_text("Введите пример")
+        EXAMPLE = True
+        last_example = last_example_from_user(update.effective_user.id)
+        if last_example:
+            await update.message.reply_html(
+                f"В прошлый раз у вас вызвали затруднения <b>{last_example[0]}</b> примеры.\nПотренируемся?",
+                reply_markup=yes_or_no_markup)
+        else:
+            await update.message.reply_text("Введите пример")
+
     elif text == "уравнение":
-        await update.message.reply_text("Введите уравнение")
+        EXAMPLE = False
+        last_equation = last_equation_from_user(update.effective_user.id)
+        if last_equation:
+            await update.message.reply_html(
+                f"В прошлый раз у вас вызвали затруднения <b>{last_equation[0]}</b> уравнения.\nПотренируемся?",
+                reply_markup=yes_or_no_markup)
+        else:
+            await update.message.reply_text("Введите уравнение")
+
     elif text == 'да':
-        pass
+        if EXAMPLE:
+            last_example = last_example_from_user(update.effective_user.id)
+            await update.message.reply_text(open_example(last_example[1]))
+        else:
+            last_equation = last_equation_from_user(update.effective_user.id)
+            await update.message.reply_text(open_equation(last_equation[1]))
+
     elif text == 'нет':
-        await update.message.reply_text('Хорошо!\nВыберите вид', reply_markup=sol_markup)
+        if EXAMPLE:
+            await update.message.reply_text(f'Хорошо!\nВведите пример')
+        else:
+            await update.message.reply_text(f'Хорошо!\nВведите уравнение')
     else:
         if update.message.reply_to_message:
             await update.message.reply_text(get_solution(text, update.message.reply_to_message.text,
                                                          update.effective_user.id))
         else:
+            await update.message.reply_text("Ответьте на сообщение")
             await update.message.reply_photo(photo=open('img/how_to_send.jpg', 'rb'))
 
 

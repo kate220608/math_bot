@@ -59,7 +59,8 @@ def last_example_from_user(user_id):
     db_sess = db_session.create_session()
     user = db_sess.query(User).filter(User.id == user_id).first()
     if user.last_example_id != 0:
-        return db_sess.query(Example).filter(Example.id == user.last_example_id).first().type
+        return (db_sess.query(Example).filter(Example.id == user.last_example_id).first().type,
+                db_sess.query(Example).filter(Example.id == user.last_example_id).first().tasks)
     else:
         return False
 
@@ -68,6 +69,8 @@ def last_equation_from_user(user_id):
     db_sess = db_session.create_session()
     user = db_sess.query(User).filter(User.id == user_id).first()
     if user.last_equation_id != 0:
-        return db_sess.query(Equation).filter(Equation.id == user.last_equation_id).first().type
+        return (db_sess.query(Equation).filter(Equation.id == user.last_equation_id).first().type,
+                db_sess.query(Equation).filter(Equation.id == user.last_equation_id).first().tasks)
+
     else:
         return False
