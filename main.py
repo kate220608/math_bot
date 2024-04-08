@@ -1,5 +1,5 @@
 import logging
-from telegram.ext import Application, MessageHandler, filters, CommandHandler
+from telegram.ext import Application, MessageHandler, filters, CommandHandler, ConversationHandler
 from telegram import ReplyKeyboardMarkup
 from solution import get_solution
 from data import db_session
@@ -12,7 +12,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
 start_reply_keyboard = [['/help', '/ask_sol']]
 start_markup = ReplyKeyboardMarkup(start_reply_keyboard, one_time_keyboard=True)
 
@@ -23,14 +22,12 @@ yes_or_no_keyboard = [['да', 'нет']]
 yes_or_no_markup = ReplyKeyboardMarkup(yes_or_no_keyboard, one_time_keyboard=True)
 
 
-EXAMPLE = True
-
 async def start(update, context):
     user = update.effective_user
     greet_text = add_user(user.id, user.name)
     await update.message.reply_html(
         f"Привет, {user.mention_html()}!\n{greet_text}\nВыберите "
-                                    "дальнейшую команду:", reply_markup=start_markup
+        "дальнейшую команду:", reply_markup=start_markup
     )
 
 
@@ -48,52 +45,71 @@ async def help(update, context):
 
 async def ask_sol(update, context):
     await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
+    return 1
 
 
-async def messages(update, context):
-    global EXAMPLE
-    text = update.message.text
+async def stop(update, context):
+    await update.message.reply_text('До скорых встреч!')
 
-    if text == "пример":
-        EXAMPLE = True
+
+async def example_or_equation(update, context):
+    if update.message.text == "пример":
         last_example = last_example_from_user(update.effective_user.id)
         if last_example:
             await update.message.reply_html(
                 f"В прошлый раз у вас вызвали затруднения <b>{last_example[0]}</b> примеры.\nПотренируемся?",
                 reply_markup=yes_or_no_markup)
+            return 2
         else:
             await update.message.reply_text("Введите пример")
+            return 3
 
-    elif text == "уравнение":
-        EXAMPLE = False
+    if update.message.text == 'уравнение':
         last_equation = last_equation_from_user(update.effective_user.id)
         if last_equation:
             await update.message.reply_html(
                 f"В прошлый раз у вас вызвали затруднения <b>{last_equation[0]}</b> уравнения.\nПотренируемся?",
                 reply_markup=yes_or_no_markup)
+            return 4
         else:
             await update.message.reply_text("Введите уравнение")
+            return 5
 
-    elif text == 'да':
-        if EXAMPLE:
-            last_example = last_example_from_user(update.effective_user.id)
+
+async def example_training(update, context):
+    if update.message.text == 'да':
+        last_example = last_example_from_user(update.effective_user.id)
+        try:
             await update.message.reply_text(open_example(last_example[1]))
-        else:
-            last_equation = last_equation_from_user(update.effective_user.id)
-            await update.message.reply_text(open_equation(last_equation[1]))
-
-    elif text == 'нет':
-        if EXAMPLE:
-            await update.message.reply_text(f'Хорошо!\nВведите пример')
-        else:
-            await update.message.reply_text(f'Хорошо!\nВведите уравнение')
+        finally:
+            return ConversationHandler.END
     else:
-        if update.message.reply_to_message:
-            await update.message.reply_text(get_solution(text, update.message.reply_to_message.text,
-                                                         update.effective_user.id))
-        else:
-            await update.message.reply_text("Ответьте на сообщение")
-            await update.message.reply_photo(photo=open('img/how_to_send.jpg', 'rb'))
+        await update.message.reply_text("Хорошо!\nВведите пример")
+        return 3
+
+
+async def example_get_sol(update, context):
+    await update.message.reply_text(get_solution(update.message.text, 'пример',
+                                                 update.effective_user.id))
+    return ConversationHandler.END
+
+
+async def equation_training(update, context):
+    if update.message.text == 'да':
+        last_equation = last_equation_from_user(update.effective_user.id)
+        try:
+            await update.message.reply_text(open_equation(last_equation[1]))
+        finally:
+            return ConversationHandler.END
+    else:
+        await update.message.reply_text("Хорошо!\nВведите уравнение")
+        return 5
+
+
+async def equation_get_sol(update, context):
+    await update.message.reply_text(get_solution(update.message.text, 'уравнение',
+                                                 update.effective_user.id))
+    return ConversationHandler.END
 
 
 def main():
@@ -102,8 +118,20 @@ def main():
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('restart', restart))
     application.add_handler(CommandHandler('help', help))
-    application.add_handler(CommandHandler('ask_sol', ask_sol))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages))
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('ask_sol', ask_sol)],
+
+        states={
+            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_or_equation)],
+            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_training)],
+            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_get_sol)],
+            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_training)],
+            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_get_sol)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+
+    application.add_handler(conv_handler)
     application.run_polling()
 
 

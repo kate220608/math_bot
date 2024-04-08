@@ -5,7 +5,7 @@ OPERATORS = ['=', '-', '%', '+', '/', '^', '*', '√']
 
 
 def get_solution(text, reply_message, user_id):
-    if reply_message == "Введите уравнение":
+    if reply_message == "уравнение":
         if any(map(str.isdigit, text)) and any(map(lambda x: x.lower() == 'x', text)):
             last_equation_to_user(user_id, what_type_equation(text))
             res = get_solution_wolfram(text)
@@ -15,7 +15,8 @@ def get_solution(text, reply_message, user_id):
                 return "Решения нет."
         else:
             return "Это не уравнение"
-    elif reply_message == "Введите пример":
+    elif reply_message == "пример":
+        print(True)
         if any(map(str.isdigit, text)) and any(map(lambda x: x in OPERATORS, text)):
             last_example_to_user(user_id, what_type_example(text))
             if '√' in text:
