@@ -81,7 +81,8 @@ async def example_training(update, context):
         last_example = last_example_from_user(update.effective_user.id)
         try:
             await update.message.reply_text(open_example(last_example[1]))
-        finally:
+            return 6
+        except:
             return ConversationHandler.END
     else:
         await update.message.reply_text("Хорошо!\nВведите пример")
@@ -99,7 +100,8 @@ async def equation_training(update, context):
         last_equation = last_equation_from_user(update.effective_user.id)
         try:
             await update.message.reply_text(open_equation(last_equation[1]))
-        finally:
+            return 7
+        except:
             return ConversationHandler.END
     else:
         await update.message.reply_text("Хорошо!\nВведите уравнение")
@@ -109,6 +111,30 @@ async def equation_training(update, context):
 async def equation_get_sol(update, context):
     await update.message.reply_text(get_solution(update.message.text, 'уравнение',
                                                  update.effective_user.id))
+    return ConversationHandler.END
+
+
+async def check_training_example(update, context):
+    user_ans = update.message.text
+    if update.message.reply_to_message:
+        cor_ans = get_solution(update.message.reply_to_message.text, 'пример',
+                     update.effective_user.id)
+        if str(cor_ans) == user_ans:
+            await update.message.reply_text('Верно!')
+        else:
+            await update.message.reply_text('Неверно!')
+    return ConversationHandler.END
+
+
+async def check_training_equation(update, context):
+    user_ans = update.message.text
+    if update.message.reply_to_message:
+        cor_ans = get_solution(update.message.reply_to_message.text, 'уравнение',
+                     update.effective_user.id)
+        if cor_ans.split('\n')[-1] == user_ans:
+            await update.message.reply_text('Верно!')
+        else:
+            await update.message.reply_text('Неверно!')
     return ConversationHandler.END
 
 
@@ -126,7 +152,9 @@ def main():
             2: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_training)],
             3: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_get_sol)],
             4: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_training)],
-            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_get_sol)]
+            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_get_sol)],
+            6: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_example)],
+            7: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_equation)]
         },
         fallbacks=[CommandHandler('stop', stop)]
     )
