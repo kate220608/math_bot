@@ -3,7 +3,8 @@ from telegram.ext import Application, MessageHandler, filters, CommandHandler, C
 from telegram import ReplyKeyboardMarkup
 from solution import get_solution
 from data import db_session
-from work_with_db import add_user, delete_user, last_example_from_user, last_equation_from_user
+from work_with_db import (add_user, delete_user, last_example_from_user, last_equation_from_user,
+                          all_examples_names, all_equations_names, tasks_for_equation, tasks_for_example)
 from work_with_files import open_equation, open_example
 
 logging.basicConfig(
@@ -12,7 +13,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-start_reply_keyboard = [['/help', '/ask_sol']]
+start_reply_keyboard = [['/help', '/ask_sol', '/training']]
 start_markup = ReplyKeyboardMarkup(start_reply_keyboard, one_time_keyboard=True)
 
 sol_reply_keyboard = [['уравнение', 'пример']]
@@ -81,7 +82,7 @@ async def example_or_equation(update, context):
             return 5
 
 
-async def example_training(update, context):
+async def example_training_in_sol(update, context):
     global LAST_EXAMPLES_TRAIN
 
     if update.message.text == 'да':
@@ -105,7 +106,7 @@ async def example_get_sol(update, context):
     return ConversationHandler.END
 
 
-async def equation_training(update, context):
+async def equation_training_in_sol(update, context):
     global LAST_EQUATIONS_TRAIN
 
     if update.message.text == 'да':
@@ -145,8 +146,8 @@ async def check_training_example(update, context):
         await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
         return 6
 
-    await update.message.reply_text('Молодец! Хорошая тренировка.\nВведите пример')
-    return 3
+    await update.message.reply_text('Молодец! Хорошая тренировка.')
+    return ConversationHandler.END
 
 
 async def check_training_equation(update, context):
@@ -166,8 +167,49 @@ async def check_training_equation(update, context):
         await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
         return 7
 
-    await update.message.reply_text('Молодец! Хорошая тренировка.\nВведите уравнение')
-    return 5
+    await update.message.reply_text('Молодец! Хорошая тренировка.')
+    return ConversationHandler.END
+
+
+async def training(update, context):
+    await update.message.reply_text('Выберите вид', reply_markup=sol_markup)
+    return 1
+
+
+async def example_or_equation_training(update, context):
+    if update.message.text == 'пример':
+        key_board = ReplyKeyboardMarkup([all_examples_names()],
+                                        one_time_keyboard=True)
+        await update.message.reply_text('Выберите тип:', reply_markup=key_board)
+        return 2
+    if update.message.text == 'уравнение':
+        key_board = ReplyKeyboardMarkup([all_equations_names()],
+                                        one_time_keyboard=True)
+        await update.message.reply_text('Выберите тип:', reply_markup=key_board)
+        return 3
+    return ConversationHandler.END
+
+
+async def example_traning(update, context):
+    global LAST_EXAMPLES_TRAIN
+
+    try:
+        LAST_EXAMPLES_TRAIN = open_example(tasks_for_example(update.message.text))
+        await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
+        return 4
+    except:
+        return ConversationHandler.END
+
+
+async def equation_training(update, context):
+    global LAST_EQUATIONS_TRAIN
+
+    try:
+        LAST_EQUATIONS_TRAIN = open_equation(tasks_for_equation(update.message.text))
+        await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
+        return 5
+    except:
+        return ConversationHandler.END
 
 
 def main():
@@ -176,14 +218,14 @@ def main():
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('restart', restart))
     application.add_handler(CommandHandler('help', help))
-    conv_handler = ConversationHandler(
+    conv_handler_ask_sol = ConversationHandler(
         entry_points=[CommandHandler('ask_sol', ask_sol)],
 
         states={
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_or_equation)],
-            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_training)],
+            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_training_in_sol)],
             3: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_get_sol)],
-            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_training)],
+            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_training_in_sol)],
             5: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_get_sol)],
             6: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_example)],
             7: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_equation)]
@@ -191,7 +233,20 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
 
-    application.add_handler(conv_handler)
+    application.add_handler(conv_handler_ask_sol)
+    conv_handler_training = ConversationHandler(
+        entry_points=[CommandHandler('training', training)],
+
+        states={
+            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_or_equation_training)],
+            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_traning)],
+            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_training)],
+            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_example)],
+            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_equation)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    application.add_handler(conv_handler_training)
     application.run_polling()
 
 

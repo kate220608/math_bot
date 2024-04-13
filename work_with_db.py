@@ -74,3 +74,23 @@ def last_equation_from_user(user_id):
 
     else:
         return False
+
+
+def all_equations_names():
+    db_sess = db_session.create_session()
+    return [el.type for el in db_sess.query(Equation).all()]
+
+
+def all_examples_names():
+    db_sess = db_session.create_session()
+    return [el.type for el in db_sess.query(Example).all()]
+
+
+def tasks_for_equation(equation):
+    db_sess = db_session.create_session()
+    return db_sess.query(Equation).filter(Equation.type == equation).first().tasks
+
+
+def tasks_for_example(example):
+    db_sess = db_session.create_session()
+    return db_sess.query(Example).filter(Example.type == example).first().tasks
