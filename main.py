@@ -182,11 +182,13 @@ async def example_or_equation_training(update, context):
                                         one_time_keyboard=True)
         await update.message.reply_text('Выберите тип:', reply_markup=key_board)
         return 2
+
     if update.message.text == 'уравнение':
         key_board = ReplyKeyboardMarkup([all_equations_names()],
                                         one_time_keyboard=True)
         await update.message.reply_text('Выберите тип:', reply_markup=key_board)
         return 3
+
     return ConversationHandler.END
 
 
