@@ -21,6 +21,9 @@ sol_markup = ReplyKeyboardMarkup(sol_reply_keyboard, one_time_keyboard=True)
 yes_or_no_keyboard = [['да', 'нет']]
 yes_or_no_markup = ReplyKeyboardMarkup(yes_or_no_keyboard, one_time_keyboard=True)
 
+LAST_EQUATIONS_TRAIN = []
+LAST_EXAMPLES_TRAIN = []
+
 
 async def start(update, context):
     user = update.effective_user
@@ -55,6 +58,7 @@ async def stop(update, context):
 async def example_or_equation(update, context):
     if update.message.text == "пример":
         last_example = last_example_from_user(update.effective_user.id)
+
         if last_example:
             await update.message.reply_html(
                 f"В прошлый раз у вас вызвали затруднения <b>{last_example[0]}</b> примеры.\nПотренируемся?",
@@ -66,6 +70,7 @@ async def example_or_equation(update, context):
 
     if update.message.text == 'уравнение':
         last_equation = last_equation_from_user(update.effective_user.id)
+
         if last_equation:
             await update.message.reply_html(
                 f"В прошлый раз у вас вызвали затруднения <b>{last_equation[0]}</b> уравнения.\nПотренируемся?",
@@ -77,13 +82,18 @@ async def example_or_equation(update, context):
 
 
 async def example_training(update, context):
+    global LAST_EXAMPLES_TRAIN
+
     if update.message.text == 'да':
         last_example = last_example_from_user(update.effective_user.id)
+
         try:
-            await update.message.reply_text(open_example(last_example[1]))
+            LAST_EXAMPLES_TRAIN = open_example(last_example[1])
+            await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
             return 6
         except:
             return ConversationHandler.END
+
     else:
         await update.message.reply_text("Хорошо!\nВведите пример")
         return 3
@@ -91,18 +101,23 @@ async def example_training(update, context):
 
 async def example_get_sol(update, context):
     await update.message.reply_text(get_solution(update.message.text, 'пример',
-                                                 update.effective_user.id))
+                                                 user_id=update.effective_user.id))
     return ConversationHandler.END
 
 
 async def equation_training(update, context):
+    global LAST_EQUATIONS_TRAIN
+
     if update.message.text == 'да':
         last_equation = last_equation_from_user(update.effective_user.id)
+
         try:
-            await update.message.reply_text(open_equation(last_equation[1]))
+            LAST_EQUATIONS_TRAIN = open_equation(last_equation[1])
+            await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
             return 7
         except:
             return ConversationHandler.END
+
     else:
         await update.message.reply_text("Хорошо!\nВведите уравнение")
         return 5
@@ -110,32 +125,49 @@ async def equation_training(update, context):
 
 async def equation_get_sol(update, context):
     await update.message.reply_text(get_solution(update.message.text, 'уравнение',
-                                                 update.effective_user.id))
+                                                 user_id=update.effective_user.id))
     return ConversationHandler.END
 
 
 async def check_training_example(update, context):
+    global LAST_EXAMPLES_TRAIN
+
     user_ans = update.message.text
-    if update.message.reply_to_message:
-        cor_ans = get_solution(update.message.reply_to_message.text, 'пример',
-                     update.effective_user.id)
-        if str(cor_ans) == user_ans:
-            await update.message.reply_text('Верно!')
-        else:
-            await update.message.reply_text('Неверно!')
-    return ConversationHandler.END
+    cor_ans = get_solution(LAST_EXAMPLES_TRAIN[0], 'пример')
+    LAST_EXAMPLES_TRAIN.pop(0)
+
+    if str(cor_ans) == user_ans:
+        await update.message.reply_text('Верно!')
+    else:
+        await update.message.reply_text(f'Неверно!\nПравильный ответ:\n{cor_ans}')
+
+    if LAST_EXAMPLES_TRAIN:
+        await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
+        return 6
+
+    await update.message.reply_text('Молодец! Хорошая тренировка.\nВведите пример')
+    return 3
 
 
 async def check_training_equation(update, context):
+    global LAST_EQUATIONS_TRAIN
+
     user_ans = update.message.text
-    if update.message.reply_to_message:
-        cor_ans = get_solution(update.message.reply_to_message.text, 'уравнение',
-                     update.effective_user.id)
-        if cor_ans.split('\n')[-1] == user_ans:
-            await update.message.reply_text('Верно!')
-        else:
-            await update.message.reply_text('Неверно!')
-    return ConversationHandler.END
+    cor_ans = get_solution(LAST_EQUATIONS_TRAIN[0], 'уравнение')
+    LAST_EQUATIONS_TRAIN.pop(0)
+
+    if cor_ans.split('\n')[-2].replace(' ', '') == user_ans.replace(' ', ''):
+        await update.message.reply_text('Верно!')
+    else:
+        await update.message.reply_text(f'Неверно!\nПравильный ответ:\n'
+                                        f'{cor_ans.split('\n')[-2]}')
+
+    if LAST_EQUATIONS_TRAIN:
+        await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
+        return 7
+
+    await update.message.reply_text('Молодец! Хорошая тренировка.\nВведите уравнение')
+    return 5
 
 
 def main():

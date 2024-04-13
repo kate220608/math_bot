@@ -4,10 +4,11 @@ from work_with_db import last_example_to_user, last_equation_to_user
 OPERATORS = ['=', '-', '%', '+', '/', '^', '*', '√']
 
 
-def get_solution(text, reply_message, user_id):
+def get_solution(text, reply_message, user_id=False):
     if reply_message == "уравнение":
         if any(map(str.isdigit, text)) and any(map(lambda x: x.lower() == 'x', text)):
-            last_equation_to_user(user_id, what_type_equation(text))
+            if user_id:
+                last_equation_to_user(user_id, what_type_equation(text))
             res = get_solution_wolfram(text)
             if res is not None:
                 return res
@@ -18,7 +19,8 @@ def get_solution(text, reply_message, user_id):
     elif reply_message == "пример":
         print(True)
         if any(map(str.isdigit, text)) and any(map(lambda x: x in OPERATORS, text)):
-            last_example_to_user(user_id, what_type_example(text))
+            if user_id:
+                last_example_to_user(user_id, what_type_example(text))
             if '√' in text:
                 return float(text.replace('√', '')) ** 0.5
             else:
@@ -86,6 +88,3 @@ def what_type_equation(text):
         return 'дробные'
     else:
         return 'линейные'
-
-
-
