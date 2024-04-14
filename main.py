@@ -22,9 +22,6 @@ sol_markup = ReplyKeyboardMarkup(sol_reply_keyboard, one_time_keyboard=True)
 yes_or_no_keyboard = [['да', 'нет']]
 yes_or_no_markup = ReplyKeyboardMarkup(yes_or_no_keyboard, one_time_keyboard=True)
 
-LAST_EQUATIONS_TRAIN = []
-LAST_EXAMPLES_TRAIN = []
-
 
 async def start(update, context):
     user = update.effective_user
@@ -83,14 +80,12 @@ async def example_or_equation(update, context):
 
 
 async def example_training_in_sol(update, context):
-    global LAST_EXAMPLES_TRAIN
-
     if update.message.text == 'да':
         last_example = last_example_from_user(update.effective_user.id)
 
         try:
-            LAST_EXAMPLES_TRAIN = open_example(last_example[1])
-            await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
+            context.user_data['LAST_EXAMPLES_TRAIN'] = open_example(last_example[1])
+            await update.message.reply_text(context.user_data['LAST_EXAMPLES_TRAIN'][0])
             return 6
         except:
             return ConversationHandler.END
@@ -107,14 +102,12 @@ async def example_get_sol(update, context):
 
 
 async def equation_training_in_sol(update, context):
-    global LAST_EQUATIONS_TRAIN
-
     if update.message.text == 'да':
         last_equation = last_equation_from_user(update.effective_user.id)
 
         try:
-            LAST_EQUATIONS_TRAIN = open_equation(last_equation[1])
-            await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
+            context.user_data['LAST_EQUATIONS_TRAIN'] = open_equation(last_equation[1])
+            await update.message.reply_text(context.user_data['LAST_EQUATIONS_TRAIN'][0])
             return 7
         except:
             return ConversationHandler.END
@@ -131,19 +124,17 @@ async def equation_get_sol(update, context):
 
 
 async def check_training_example(update, context):
-    global LAST_EXAMPLES_TRAIN
-
     user_ans = update.message.text
-    cor_ans = get_solution(LAST_EXAMPLES_TRAIN[0], 'пример')
-    LAST_EXAMPLES_TRAIN.pop(0)
+    cor_ans = get_solution(context.user_data['LAST_EXAMPLES_TRAIN'][0], 'пример')
+    context.user_data['LAST_EXAMPLES_TRAIN'].pop(0)
 
     if str(cor_ans) == user_ans:
         await update.message.reply_text('Верно!')
     else:
         await update.message.reply_text(f'Неверно!\nПравильный ответ:\n{cor_ans}')
 
-    if LAST_EXAMPLES_TRAIN:
-        await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
+    if context.user_data['LAST_EXAMPLES_TRAIN']:
+        await update.message.reply_text(context.user_data['LAST_EXAMPLES_TRAIN'][0])
         return 6
 
     await update.message.reply_text('Молодец! Хорошая тренировка.')
@@ -151,11 +142,9 @@ async def check_training_example(update, context):
 
 
 async def check_training_equation(update, context):
-    global LAST_EQUATIONS_TRAIN
-
     user_ans = update.message.text
-    cor_ans = get_solution(LAST_EQUATIONS_TRAIN[0], 'уравнение')
-    LAST_EQUATIONS_TRAIN.pop(0)
+    cor_ans = get_solution(context.user_data['LAST_EQUATIONS_TRAIN'][0], 'уравнение')
+    context.user_data['LAST_EQUATIONS_TRAIN'].pop(0)
 
     if cor_ans.split('\n')[-2].replace(' ', '') == user_ans.replace(' ', ''):
         await update.message.reply_text('Верно!')
@@ -163,8 +152,8 @@ async def check_training_equation(update, context):
         await update.message.reply_text(f'Неверно!\nПравильный ответ:\n'
                                         f'{cor_ans.split('\n')[-2]}')
 
-    if LAST_EQUATIONS_TRAIN:
-        await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
+    if context.user_data['LAST_EQUATIONS_TRAIN']:
+        await update.message.reply_text(context.user_data['LAST_EQUATIONS_TRAIN'][0])
         return 7
 
     await update.message.reply_text('Молодец! Хорошая тренировка.')
@@ -193,23 +182,19 @@ async def example_or_equation_training(update, context):
 
 
 async def example_traning(update, context):
-    global LAST_EXAMPLES_TRAIN
-
     try:
-        LAST_EXAMPLES_TRAIN = open_example(tasks_for_example(update.message.text))
-        await update.message.reply_text(LAST_EXAMPLES_TRAIN[0])
-        return 4
+        context.user_data['LAST_EXAMPLES_TRAIN'] = open_example(tasks_for_example(update.message.text))
+        await update.message.reply_text(context.user_data['LAST_EXAMPLES_TRAIN'][0])
+        return 6
     except:
         return ConversationHandler.END
 
 
 async def equation_training(update, context):
-    global LAST_EQUATIONS_TRAIN
-
     try:
-        LAST_EQUATIONS_TRAIN = open_equation(tasks_for_equation(update.message.text))
-        await update.message.reply_text(LAST_EQUATIONS_TRAIN[0])
-        return 5
+        context.user_data['LAST_EQUATIONS_TRAIN'] = open_equation(tasks_for_equation(update.message.text))
+        await update.message.reply_text(context.user_data['LAST_EQUATIONS_TRAIN'][0])
+        return 7
     except:
         return ConversationHandler.END
 
@@ -235,7 +220,6 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
 
-    application.add_handler(conv_handler_ask_sol)
     conv_handler_training = ConversationHandler(
         entry_points=[CommandHandler('training', training)],
 
@@ -243,11 +227,12 @@ def main():
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_or_equation_training)],
             2: [MessageHandler(filters.TEXT & ~filters.COMMAND, example_traning)],
             3: [MessageHandler(filters.TEXT & ~filters.COMMAND, equation_training)],
-            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_example)],
-            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_equation)]
+            6: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_example)],
+            7: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_training_equation)]
         },
         fallbacks=[CommandHandler('stop', stop)]
     )
+    application.add_handler(conv_handler_ask_sol)
     application.add_handler(conv_handler_training)
     application.run_polling()
 
